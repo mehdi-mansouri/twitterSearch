@@ -1,9 +1,10 @@
 from base64 import encode
-
 from telnetlib import SE
 import snscrape.modules.twitter as sntwitter 
 import pandas as pd
+import numpy as np
 from tw import Sentiment
+import csv
 
 # ------------text split--------------
 def text_split(tweet):
@@ -21,6 +22,8 @@ def text_split(tweet):
             word = '@user'
         elif word.startswith('http'):
             word = "http"
+        elif word.startswith('\\u'):
+            word = ""
 
         elif len(word.split('\n')) ==1:
             tweet_words.append(word)
@@ -28,15 +31,17 @@ def text_split(tweet):
     return tweet_proc
 #-------------------speichern in CSV Datei----------------
 def save(tweets,file_name):
-    df = pd.DataFrame(tweets ,columns=['Date','User','Tweet','Sentiment','likeCount','retweetCount'])
-    df.to_csv(file_name,sep='\t',header=False, mode='a')
+    data_array =np.array(tweets)
+    df=pd.DataFrame(data_array,columns=['tweet'])
+   # data_json=df.to_json(orient='records')
+    df.to_json(file_name, orient='records')
 
-query="(#EnergyTips) lang:en until:2022-11-25 since:2006-01-01"
+query="(#EnergyTips) lang:en until:2022-11-26 since:2006-01-01"
 tweets = []
 posetive_tweets=[]
 negative_tweets=[]
 neutral_tweets=[]
-limit =1000
+limit =1000000
 inc=0
 
 for tweet in sntwitter.TwitterSearchScraper(query).get_items():
@@ -45,23 +50,32 @@ for tweet in sntwitter.TwitterSearchScraper(query).get_items():
     else :
         content_sentiment = Sentiment.sentiment_scores(tweet.content)    
         contenttext = str(text_split(tweet.content))
-        if content_sentiment =='Positive':     
-            posetive_tweets.append([tweet.date, tweet.user.username,contenttext,content_sentiment ,tweet.likeCount,tweet.retweetCount])
-        elif content_sentiment =='Negative':
-            negative_tweets.append([tweet.date, tweet.user.username,contenttext,content_sentiment,tweet.likeCount,tweet.retweetCount])
-        elif content_sentiment =='Neutral':
-            neutral_tweets.append([tweet.date, tweet.user.username,contenttext,content_sentiment,tweet.likeCount,tweet.retweetCount])
         
-        tweets.append([tweet.date, tweet.user.username,contenttext,content_sentiment,tweet.likeCount,tweet.retweetCount])
+        if content_sentiment =='Positive':     
+            #posetive_tweets.append([tweet.date, tweet.user.username,contenttext,content_sentiment ,tweet.likeCount,tweet.retweetCount])
+            posetive_tweets.append([contenttext])
+            
+        elif content_sentiment =='Negative':
+            #negative_tweets.append([tweet.date, tweet.user.username,contenttext,content_sentiment,tweet.likeCount,tweet.retweetCount])
+            negative_tweets.append([contenttext])
+        elif content_sentiment =='Neutral':
+            #neutral_tweets.append([tweet.date, tweet.user.username,contenttext,content_sentiment,tweet.likeCount,tweet.retweetCount])
+            neutral_tweets.append([contenttext])
+        
+        #tweets.append([tweet.date, tweet.user.username,contenttext,content_sentiment,tweet.likeCount,tweet.retweetCount])
+        tweets.append([contenttext])
         inc+=1
-        print(inc)
+        #print(inc)
+        #print(contenttext)
 
 #ganze tweets
-save(tweets,'EnergyTips.csv')
+#df=pd.DataFrame(tweets,columns=['tweet'])
+#print(tweets)
+save(tweets,'EnergyTips.json')
 #Positive tweets
-save(posetive_tweets,'EnergyTips_posetive_tweets.csv')
+save(posetive_tweets,'EnergyTips_posetive_tweets.json')
 #Negative tweets
-save(negative_tweets,'EnergyTips_negative_tweets.csv')
+save(negative_tweets,'EnergyTips_negative_tweets.json')
 #neutral tweets
-save(neutral_tweets,'EnergyTips_neutral_tweets.csv')
+save(neutral_tweets,'EnergyTips_neutral_tweets.json')
 
